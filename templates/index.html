@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Chat System</title>
+    <style>
+        body {
+    font-family: Arial, sans-serif;
+    background-color: #fafafa;
+    margin: 0;
+    padding: 0;
+}
+
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 600px;
+    margin: 0 auto;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.chat-box {
+    flex: 1;
+    padding: 10px;
+    overflow-y: scroll;
+    border-bottom: 1px solid #ddd;
+}
+
+.input-container {
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #0095f6;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #007bb5;
+}
+
+.message {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    max-width: 80%;
+}
+
+.user-message {
+    background-color: #f1f0f0;
+    align-self: flex-end;
+}
+
+.bot-message {
+    background-color:#dcf8c6 ;
+    align-self: flex-start;
+}
+
+.bot-audio {
+    align-self: flex-start;
+    margin: 10px 0;
+}
+
+.loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 30px;
+            height: 30px;
+            -webkit-animation: spin 2s linear infinite;
+            animation: spin 2s linear infinite;
+            margin: auto;
+            margin-top: 20px;
+            display: none; /* Initially hidden */
+        }
+
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-box" id="chatBox">
+            <!-- Messages will be appended here -->
+            <div id="loader" class="loader"></div> <!-- Loader inside chat-box -->
+        </div>
+        <div class="input-container">
+            <button onclick="recordMessage()">Record Message</button>
+        </div>
+    </div>
+
+    <script>
+        function recordMessage() {
+            // Show loader when sending message
+            document.getElementById("loader").style.display = "block";
+
+            fetch('/listen', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    const chatBox = document.getElementById('chatBox');
+
+                    // User message
+                    const userMessageDiv = document.createElement('div');
+                    userMessageDiv.classList.add('message', 'user-message');
+                    userMessageDiv.innerText = "You: " + data.message.split('. Here is a random number: ')[0];
+                    chatBox.appendChild(userMessageDiv);
+
+                    // Scroll to the bottom
+                    chatBox.scrollTop = chatBox.scrollHeight;
+
+                    // Send user message for TTS and random number generation
+                    fetch('/process-message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ message: data.message })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Bot response
+                        const botMessageDiv = document.createElement('div');
+                        botMessageDiv.classList.add('message', 'bot-message');
+                        botMessageDiv.innerText = "Bot: " + data.message;
+                        chatBox.appendChild(botMessageDiv);
+
+                        // Bot audio
+                        const botAudioDiv = document.createElement('div');
+                        botAudioDiv.classList.add('bot-audio');
+                        const botAudio = document.createElement('audio');
+                        botAudio.controls = true;
+                        botAudio.src = '/static/' + data.audio;
+                        botAudio.autoplay = true; // Autoplay the audio
+                        botAudioDiv.appendChild(botAudio);
+                        chatBox.appendChild(botAudioDiv);
+
+                        // Scroll to the bottom
+                        chatBox.scrollTop = chatBox.scrollHeight;
+
+                        // Hide loader when response received
+                        document.getElementById("loader").style.display = "none";
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        // Hide loader in case of error
+                        document.getElementById("loader").style.display = "none";
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Hide loader in case of error
+                    document.getElementById("loader").style.display = "none";
+                });
+        }
+    </script>
+</body>
+</html>
